@@ -1,5 +1,7 @@
-(ns reanimator.views.admin-components
-  (:require [reanimator.core.util :refer [fmt-date]]))
+(ns admgen.components)
+
+(defn fmt-date [template date]
+  (.format (java.text.SimpleDateFormat. template) date))
 
 (defn uid []
   (str (rand)))
@@ -17,11 +19,19 @@
                  :value opt-val, :checked (= value opt-val)}]
         opt-label])])
 
-(defn line [{:keys [label desc name value type] :as params}]
+(defn line [{:keys [required? label desc name value type accept] :as params}]
+  [:div.line {:class (if required? "has-warning")}
+    [:label.line-label label]
+    [:div.line-desc desc]
+    [:input.line-value.form-control
+      {:required required?, :name name, :type type, :accept accept, :value value }]])
+
+(defn line-select [{:keys [label desc name value opts] :as params}]
   [:div.line
     [:label.line-label label]
     [:div.line-desc desc]
-    [:input.line-value.form-control {:name name, :type type, :value value}]])
+    [:div.line-value
+      (render-select name value opts)]])
 
 (defn line-hidden [{:keys [label name value] :as params}]
   [:input {:type "hidden", :name name, :value value}])
@@ -45,12 +55,16 @@
     [:input.html-editor-input {:type "hidden", :name name, :value value}]
     [:div.html-editor {:data-editable true, :data-name name} value]])
 
+(defn line-phone [{:keys [label name desc value css-class] :as params}]
+  (line (assoc params :type "tel")))
+
 (defn line-file [{:keys [label name desc value css-class] :as params}]
   (line (-> params
             (assoc :type "file")
             (dissoc :value))))
 
-(def line-image line-file)
+(defn line-image [params]
+  (line-file (assoc params :accept "image/*")))
 
 (defn reformat-date [date-str]
   (fmt-date "yyyy-MM-dd" (java.sql.Timestamp/valueOf date-str)))
@@ -70,12 +84,19 @@
     [:div.line-desc desc]
     [:textarea.line-value.form-control {:name name} value]])
 
+(defn boolean? [val]
+  (= (type val) java.lang.Boolean))
+
 (defn line-check
   "Checkbox line for a form"
   [{:keys [label name value css-class]}]
+  (let [value (if (boolean? value)
+                value
+                (= "true" value))]
   [:div.line.line--check
+    [:input {:type "hidden" :class "hidden", :name name, :value "false"}]
     [:label
-      [:input {:type "checkbox", :name name, :value 1, :checked value}] " " label]])
+      [:input {:type "checkbox", :name name, :value "true", :checked value}] " " label]]))
 
 (defn line-submit []
   [:div.line
@@ -84,6 +105,6 @@
 (defn page-submitter [category-url]
   [:div.submitter
     [:button.btn.btn-primary.form-submit "Save"]
-    [:a {:href category-url} "Back to admin"]
+    [:a.backlink {:href category-url} "Back to admin"]
     [:span.submitter-status]
     [:a.submitter-delete "Delete"]])
